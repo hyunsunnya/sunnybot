@@ -23,10 +23,10 @@ def get_cnn_fgi():
     rating = data['fear_and_greed']['rating']
     return score, rating
 
-def get_spy_price():
-    """현재 SPY 가격 가져오기"""
-    spy = yf.Ticker("SPY")
-    return spy.fast_info['last_price']
+def get_price(ticker):
+    """주식 가격 가져오기 (미국/한국 공용)"""
+    stock = yf.Ticker(ticker)
+    return stock.fast_info['last_price']
 
 async def send_message(text):
     """텔레그램 채널로 메시지 전송"""
@@ -34,31 +34,39 @@ async def send_message(text):
     await bot.send_message(chat_id=CHANNEL_ID, text=text)
 
 async def main():
-    print("🚀 데이터 분석 및 채널 방송 준비 중...")
+    print("🚀 데이터 분석 및 조건 검사 시작...")
     try:
+        # 1. 데이터 수집
         score, rating = get_cnn_fgi()
-        price = get_spy_price()
+        spy_price = get_price("SPY")
+        tiger_price = get_price("360750.KS")
         
-        status = f"📊 [실시간 FGI 투자 지표]\n\n" \
-                 f"📌 탐욕 지수: {score:.2f} ({rating.upper()})\n" \
-                 f"💵 SPY 가격: ${price:.2f}\n\n" \
-                 f"※ 이 알림은 봇에 의해 자동 발송됩니다."
-        
-        print("-" * 30)
-        print(status)
-        print("-" * 30)
+        # 2. 메시지 구성 (기본 지표 정보)
+        status = f"📊 [실시간 Fear & Greed 보고서]\n\n" \
+                 f"🔥 탐욕 지수: {score:.2f} ({rating.upper()})\n\n" \
+                 f"🇺🇸 SPY (미국): ${spy_price:.2f}\n" \
+                 f"🇰🇷 TIGER 미국S&P500: {int(tiger_price):,}원\n\n" \
+                 f"※ 이 알림은 특정 구간에만 자동 발송됩니다."
 
-        # [알림 조건 설정]
-        # 현재 지수가 45(공포) 이하일 때만 채널에 전송
-        # 전송 테스트를 해보고 싶다면 45를 100으로 잠시 바꿔보세요!
-        if score <= 100: 
-            msg = f"🚨 매수 타이밍 포착!\n{status}\n\n시장이 공포에 빠졌습니다. 분할 매수를 검토하세요!"
-            await send_message(msg)
-            print("📱 채널로 알림 전송 완료!")
+        # 3. 전송 조건 검사 (40 이하 또는 60 이상)
+        should_send = False
+        headline = ""
+
+        if score <= 40:
+            headline = "🚨🐣 매수 포인트 포착! 😎💵"
+            should_send = True
+        elif score >= 60:
+            headline = "💰🐥 매도 포인트 포착! 😘💸"
+            should_send = True
         else:
-            print("현재는 공포 구간이 아니므로 채널 메시지를 보내지 않습니다.")
-            # (선택 사항) 매일 상황을 보고받고 싶다면 아래 줄의 주석(#)을 제거하세요.
-            # await send_message(f"✅ 오늘 시장 상황 보고\n{status}")
+            # 40 < score < 60 구간
+            print(f"😴 현재 지수 {score:.2f}: 관망 구간이므로 메시지를 보내지 않습니다.")
+
+        # 4. 최종 전송
+        if should_send:
+            final_msg = f"{headline}\n\n{status}"
+            await send_message(final_msg)
+            print(f"📱 전송 완료! (지수: {score:.2f})")
 
     except Exception as e:
         print(f"❌ 에러 발생: {e}")
