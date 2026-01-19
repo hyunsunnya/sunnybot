@@ -2,7 +2,7 @@ name: Daily FGI Bot
 
 on:
   schedule:
-    - cron: '7 0 * * *'  # 한국 시간 오전 9시 7분
+    - cron: '27 1 * * *'  # 한국 시간(KST) 오전 10시 27분 (UTC 01:27)
   workflow_dispatch:      # 수동 실행 버튼
 
 jobs:
